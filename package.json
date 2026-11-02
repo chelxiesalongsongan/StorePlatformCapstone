@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "@redocly/cli": "^2.72.1"
+  }
+}

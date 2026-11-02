@@ -1,0 +1,253 @@
+﻿openapi: 3.0.3
+
+info:
+  title: Inventory Service API
+  description: API contract for managing product stock and reservations.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:5002
+
+tags:
+  - name: Inventory
+    description: Product stock and reservation operations
+
+paths:
+  /inventory/v1/products/{productId}/stock:
+    get:
+      security:
+        - bearerAuth: []
+      tags:
+        - Inventory
+      summary: Get product stock
+      operationId: getProductStock
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: Stock information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stock'
+        '404':
+          description: Product stock not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+    put:
+      security:
+        - bearerAuth: []
+      tags:
+        - Inventory
+      summary: Adjust product stock
+      operationId: adjustProductStock
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int32
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdjustStockRequest'
+      responses:
+        '204':
+          description: Product stock adjusted successfully
+        '400':
+          description: Invalid stock adjustment
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Product not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /inventory/v1/reservations:
+    post:
+      security:
+        - bearerAuth: []
+      tags:
+        - Inventory
+      summary: Reserve product stock
+      operationId: reserveStock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReserveStockRequest'
+      responses:
+        '201':
+          description: Stock reserved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '400':
+          description: Invalid reservation request
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Product not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Insufficient available stock
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /inventory/v1/reservations/{id}/release:
+    post:
+      security:
+        - bearerAuth: []
+      tags:
+        - Inventory
+      summary: Release a stock reservation
+      operationId: releaseReservation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Reservation released successfully
+        '404':
+          description: Reservation not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Reservation cannot be released
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Stock:
+      type: object
+      required:
+        - productId
+        - quantityOnHand
+        - quantityReserved
+        - quantityAvailable
+      properties:
+        productId:
+          type: integer
+          format: int32
+        quantityOnHand:
+          type: integer
+          format: int32
+        quantityReserved:
+          type: integer
+          format: int32
+        quantityAvailable:
+          type: integer
+          format: int32
+
+    ReserveStockRequest:
+      type: object
+      required:
+        - productId
+        - quantity
+        - orderId
+      properties:
+        productId:
+          type: integer
+          format: int32
+        quantity:
+          type: integer
+          format: int32
+          minimum: 1
+        orderId:
+          type: integer
+          format: int32
+
+    Reservation:
+      type: object
+      required:
+        - id
+        - productId
+        - orderId
+        - quantity
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: integer
+          format: int32
+        orderId:
+          type: integer
+          format: int32
+        quantity:
+          type: integer
+          format: int32
+        status:
+          type: string
+          enum:
+            - Reserved
+            - Released
+
+    AdjustStockRequest:
+      type: object
+      required:
+        - quantity
+      properties:
+        quantity:
+          type: integer
+          format: int32
+          minimum: 0
+
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        status:
+          type: integer
+          nullable: true
+        detail:
+          type: string
+          nullable: true
+        instance:
+          type: string
+          nullable: true
