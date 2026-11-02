@@ -1,0 +1,25 @@
+﻿# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Build outputs
+**/bin/
+**/obj/
+
+# Node.js
+node_modules/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+**/appsettings.Local.json
+**/appsettings.Development.local.json
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
