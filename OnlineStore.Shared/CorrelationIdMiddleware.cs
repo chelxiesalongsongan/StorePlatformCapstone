@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace OnlineStore.Shared;
 
@@ -6,7 +7,9 @@ public class CorrelationIdMiddleware(RequestDelegate next)
 {
     private const string HeaderName = "X-Correlation-ID";
 
-    public async Task InvokeAsync(HttpContext context)
+    public async Task InvokeAsync(
+        HttpContext context,
+        ILogger<CorrelationIdMiddleware> logger)
     {
         var correlationId = context.Request.Headers[HeaderName].FirstOrDefault();
 
@@ -19,6 +22,13 @@ public class CorrelationIdMiddleware(RequestDelegate next)
 
         context.Response.Headers[HeaderName] = correlationId;
 
-        await next(context);
+        using (logger.BeginScope("CorrelationId: {CorrelationId}", correlationId))
+        {
+            logger.LogInformation(
+                "Received request with Correlation ID: {CorrelationId}",
+                correlationId);
+
+            await next(context);
+        }
     }
 }
