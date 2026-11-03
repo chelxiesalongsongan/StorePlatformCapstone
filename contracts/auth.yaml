@@ -1,0 +1,115 @@
+﻿openapi: 3.0.3
+info:
+  title: Auth Service API
+  version: v1
+  description: Registers users and issues JWTs used by the API gateway.
+servers:
+  - url: http://localhost:8080
+    description: Through the API gateway
+paths:
+  /auth/v1/register:
+    post:
+      operationId: Register
+      summary: Register a new customer account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/Problem'
+        '409':
+          $ref: '#/components/responses/Problem'
+  /auth/v1/login:
+    post:
+      operationId: Login
+      summary: Log in and receive a JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/Problem'
+        '401':
+          $ref: '#/components/responses/Problem'
+        '429':
+          description: Too many login attempts (gateway rate limit)
+components:
+  responses:
+    Problem:
+      description: Error in RFC 9457 Problem Details format
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        role:
+          type: string
+          enum: [Customer, Admin]
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        expiresAtUtc:
+          type: string
+          format: date-time
+        email:
+          type: string
+        role:
+          type: string
+          enum: [Customer, Admin]
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
