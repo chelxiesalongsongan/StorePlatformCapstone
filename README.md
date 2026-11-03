@@ -1,4 +1,4 @@
-# StorePlatformCapstone
+﻿# StorePlatformCapstone
 
 ## Running the system
 
@@ -93,7 +93,7 @@ The **Ocelot gateway** is the only entry point. It validates the JWT issued by t
 | `/auth/v1/login` | POST | Public, rate limited to 5 per minute per client (429) |
 | `/catalog/v1/...` | GET | Public |
 | `/catalog/v1/...` | POST, PUT, DELETE | Admin |
-| `/inventory/v1/...` | GET | Logged-in users |
+| `/inventory/v1/...` | GET | Public (live stock levels on the products page) |
 | `/inventory/v1/...` | POST, PUT, DELETE | Admin |
 | `/orders/v1/...` | GET, POST, PUT, DELETE | Logged-in users (user ID forwarded as `X-User-Id`) |
 | `/payments/v1/simulation` | GET, PUT | Logged-in users (simulate payment failure switch) |
@@ -161,7 +161,7 @@ Each service owns its own database, so placing an order cannot be one transactio
 - **Order status.** `POST /orders/v1/orders` returns 202 with the order **Pending**. It becomes Confirmed or Cancelled a moment later, after Inventory and Payment have reacted to the events. The Storefront's order page shows the status and refreshes until the order is finished, so the customer always sees where it stands.
 - **Stock after a failed payment.** When a payment is declined, the stock stays reserved until Inventory processes `StockReleaseRequested`, typically well under a second later. During that window another order could see slightly less stock than is really available, which is a safe direction to be wrong in.
 - **Refunds.** A refund is applied when Payment processes `RefundRequested`, after the order is already Cancelled.
-- **Catalog stock figure.** The stock number shown on the products page comes from the Catalog service, while Inventory is the source of truth for reservations. The Catalog figure is informational and is not updated by each order.
+- **Stock shown to customers.** The products page reads live stock from Inventory, the source of truth, so it drops as soon as an order reserves stock and rises again when a cancelled order releases it. The Catalog service's own stock field is not updated by orders and is no longer displayed.
 
 Why this is acceptable:
 
