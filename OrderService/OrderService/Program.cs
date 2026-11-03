@@ -1,9 +1,17 @@
+﻿using Microsoft.EntityFrameworkCore;
+using OrderService.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddDbContext<OrderDbContext>(o =>
+    o.UseSqlite(
+        
+builder.Configuration.GetConnectionString("OrderDb")));
 
 // Correlation ID handler
 builder.Services.AddTransient<OnlineStore.Shared.CorrelationIdHandler>();
@@ -67,7 +75,27 @@ builder.Services.AddTransient<PaymentService.Clients.PaymentApiClient>(servicePr
     };
 });
 
+// RabbitMQ and the order saga (Module 4)
+Store.Messaging.MessagingServiceCollectionExtensions.AddRabbitMessaging(builder.Services, builder.Configuration);
+builder.Services.AddHostedService<OrderService.Messaging.OrderStockReservedConsumer>();
+builder.Services.AddHostedService<OrderService.Messaging.OrderPaymentChargedConsumer>();
+builder.Services.AddHostedService<OrderService.Messaging.OrderStockReservationFailedConsumer>();
+builder.Services.AddHostedService<OrderService.Messaging.OrderPaymentFailedConsumer>();
+
 var app = builder.Build();
+
+// Apply migrations at startup so a clean clone has the order tables
+using (var migrationScope = app.Services.CreateScope())
+{
+    migrationScope.ServiceProvider.GetRequiredService<OrderService.Data.OrderDbContext>().Database.Migrate();
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    scope.ServiceProvider
+        .GetRequiredService<OrderDbContext>()
+        .Database.Migrate();
+}
 
 app.UseMiddleware<OnlineStore.Shared.CorrelationIdMiddleware>();
 
@@ -80,3 +108,4 @@ if (app.Environment.IsDevelopment())
 app.MapControllers();
 
 app.Run();
+

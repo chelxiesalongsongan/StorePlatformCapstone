@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  catalogservice:
+    build:
+      context: ./CatalogService/CatalogService
+      dockerfile: Dockerfile
+    container_name: catalogservice
+    ports:
+      - "5001:8080"
+    depends_on:
+      - rabbitmq
+
+  inventoryservice:
+    build:
+      context: ./InventoryService/InventoryService
+      dockerfile: Dockerfile
+    container_name: inventoryservice
+    ports:
+      - "5002:8080"
+    depends_on:
+      - rabbitmq
+
+  orderservice:
+    build:
+      context: ./OrderService/OrderService
+      dockerfile: Dockerfile
+    container_name: orderservice
+    ports:
+      - "5003:8080"
+    depends_on:
+      - rabbitmq
+
+  paymentservice:
+    build:
+      context: ./PaymentService
+      dockerfile: Dockerfile
+    container_name: paymentservice
+    ports:
+      - "5004:8080"
+    depends_on:
+      - rabbitmq
