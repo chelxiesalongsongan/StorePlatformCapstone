@@ -83,6 +83,7 @@ builder.Services.AddHostedService<OrderService.Messaging.OrderStockReservationFa
 builder.Services.AddHostedService<OrderService.Messaging.OrderPaymentFailedConsumer>();
 
 var app = builder.Build();
+app.UseMiddleware<OnlineStore.Shared.CorrelationIdMiddleware>();
 
 // Apply migrations at startup so a clean clone has the order tables
 using (var migrationScope = app.Services.CreateScope())
@@ -108,4 +109,5 @@ if (app.Environment.IsDevelopment())
 app.MapControllers();
 
 app.Run();
+
 
