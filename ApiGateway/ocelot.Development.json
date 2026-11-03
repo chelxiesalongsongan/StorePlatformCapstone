@@ -1,0 +1,82 @@
+﻿{
+  "Routes": [
+    {
+      "UpstreamPathTemplate": "/auth/v1/login",
+      "UpstreamHttpMethod": [ "Post" ],
+      "DownstreamPathTemplate": "/auth/v1/login",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5259 } ],
+      "RateLimitOptions": {
+        "EnableRateLimiting": true,
+        "Period": "1m",
+        "PeriodTimespan": 60,
+        "Limit": 5,
+        "ClientWhitelist": []
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/auth/v1/register",
+      "UpstreamHttpMethod": [ "Post" ],
+      "DownstreamPathTemplate": "/auth/v1/register",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5259 } ]
+    },
+    {
+      "UpstreamPathTemplate": "/catalog/v1/{everything}",
+      "UpstreamHttpMethod": [ "Get" ],
+      "DownstreamPathTemplate": "/catalog/v1/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5044 } ]
+    },
+    {
+      "UpstreamPathTemplate": "/catalog/v1/{everything}",
+      "UpstreamHttpMethod": [ "Post", "Put", "Delete" ],
+      "DownstreamPathTemplate": "/catalog/v1/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5044 } ],
+      "AuthenticationOptions": { "AuthenticationProviderKeys": [ "Bearer" ], "AllowedScopes": [] },
+      "RouteClaimsRequirement": { "role": "Admin" }
+    },
+    {
+      "UpstreamPathTemplate": "/inventory/v1/{everything}",
+      "UpstreamHttpMethod": [ "Get" ],
+      "DownstreamPathTemplate": "/inventory/v1/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5007 } ],
+      "AuthenticationOptions": { "AuthenticationProviderKeys": [ "Bearer" ], "AllowedScopes": [] }
+    },
+    {
+      "UpstreamPathTemplate": "/inventory/v1/{everything}",
+      "UpstreamHttpMethod": [ "Post", "Put", "Delete" ],
+      "DownstreamPathTemplate": "/inventory/v1/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5007 } ],
+      "AuthenticationOptions": { "AuthenticationProviderKeys": [ "Bearer" ], "AllowedScopes": [] },
+      "RouteClaimsRequirement": { "role": "Admin" }
+    },
+    {
+      "UpstreamPathTemplate": "/orders/v1/{everything}",
+      "UpstreamHttpMethod": [ "Get", "Post", "Put", "Delete" ],
+      "DownstreamPathTemplate": "/orders/v1/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5262 } ],
+      "AuthenticationOptions": { "AuthenticationProviderKeys": [ "Bearer" ], "AllowedScopes": [] },
+      "AddHeadersToRequest": { "X-User-Id": "Claims[sub] > value" }
+    },
+    {
+      "UpstreamPathTemplate": "/payments/v1/simulation",
+      "UpstreamHttpMethod": [ "Get", "Put" ],
+      "DownstreamPathTemplate": "/payments/v1/simulation",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5212 } ],
+      "AuthenticationOptions": { "AuthenticationProviderKeys": [ "Bearer" ], "AllowedScopes": [] }
+    }
+  ],
+  "GlobalConfiguration": {
+    "BaseUrl": "http://localhost:5284",
+    "RateLimitOptions": {
+      "QuotaExceededMessage": "Too many login attempts. Try again in a minute.",
+      "HttpStatusCode": 429
+    }
+  }
+}

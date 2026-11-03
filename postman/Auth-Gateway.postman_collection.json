@@ -1,0 +1,114 @@
+﻿{
+  "info": {
+    "name": "Auth & Gateway",
+    "description": "Module 8 security flows through the Ocelot gateway. Run 'Login customer' and 'Login admin' first; tokens are stored in collection variables automatically. For Docker, set baseUrl to http://localhost:8080.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": { "type": "noauth" },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5284" },
+    { "key": "customerToken", "value": "" },
+    { "key": "adminToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Browse products (public)",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test(\"Public browse returns 200 without a token\", () => pm.response.to.have.status(200));"
+      ]}}],
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/catalog/v1/products", "host": ["{{baseUrl}}"], "path": ["catalog", "v1", "products"] }
+      }
+    },
+    {
+      "name": "Register customer",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test(\"Registered (201) or already exists (409)\", () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));"
+      ]}}],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"email\":\"customer@test.com\",\"password\":\"Customer#123\"}", "options": { "raw": { "language": "json" } } },
+        "url": { "raw": "{{baseUrl}}/auth/v1/register", "host": ["{{baseUrl}}"], "path": ["auth", "v1", "register"] }
+      }
+    },
+    {
+      "name": "Login customer",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test(\"Login returns 200\", () => pm.response.to.have.status(200));",
+        "if (pm.response.code === 200) { pm.collectionVariables.set(\"customerToken\", pm.response.json().accessToken); }"
+      ]}}],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"email\":\"customer@test.com\",\"password\":\"Customer#123\"}", "options": { "raw": { "language": "json" } } },
+        "url": { "raw": "{{baseUrl}}/auth/v1/login", "host": ["{{baseUrl}}"], "path": ["auth", "v1", "login"] }
+      }
+    },
+    {
+      "name": "Login admin",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test(\"Login returns 200\", () => pm.response.to.have.status(200));",
+        "if (pm.response.code === 200) { pm.collectionVariables.set(\"adminToken\", pm.response.json().accessToken); }"
+      ]}}],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"email\":\"admin@store.local\",\"password\":\"Admin#12345\"}", "options": { "raw": { "language": "json" } } },
+        "url": { "raw": "{{baseUrl}}/auth/v1/login", "host": ["{{baseUrl}}"], "path": ["auth", "v1", "login"] }
+      }
+    },
+    {
+      "name": "Create product - anonymous (expect 401)",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test(\"Anonymous call is rejected with 401\", () => pm.response.to.have.status(401));"
+      ]}}],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{}", "options": { "raw": { "language": "json" } } },
+        "url": { "raw": "{{baseUrl}}/catalog/v1/products", "host": ["{{baseUrl}}"], "path": ["catalog", "v1", "products"] }
+      }
+    },
+    {
+      "name": "Create product - customer (expect 403)",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test(\"Customer is forbidden with 403\", () => pm.response.to.have.status(403));"
+      ]}}],
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{customerToken}}", "type": "string" }] },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{}", "options": { "raw": { "language": "json" } } },
+        "url": { "raw": "{{baseUrl}}/catalog/v1/products", "host": ["{{baseUrl}}"], "path": ["catalog", "v1", "products"] }
+      }
+    },
+    {
+      "name": "Create product - admin (passes the gateway)",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test(\"Admin is not blocked by the gateway\", () => pm.expect(pm.response.code).to.not.be.oneOf([401, 403]));"
+      ]}}],
+      "request": {
+        "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{}", "options": { "raw": { "language": "json" } } },
+        "url": { "raw": "{{baseUrl}}/catalog/v1/products", "host": ["{{baseUrl}}"], "path": ["catalog", "v1", "products"] }
+      }
+    },
+    {
+      "name": "Login rate limit (send 6 times quickly, expect 429)",
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+        "pm.test(\"Status is 200 until the limit, then 429\", () => pm.expect(pm.response.code).to.be.oneOf([200, 429]));"
+      ]}}],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"email\":\"customer@test.com\",\"password\":\"Customer#123\"}", "options": { "raw": { "language": "json" } } },
+        "url": { "raw": "{{baseUrl}}/auth/v1/login", "host": ["{{baseUrl}}"], "path": ["auth", "v1", "login"] }
+      }
+    }
+  ]
+}
