@@ -50,6 +50,10 @@ app.Use(async (context, next) =>
     }
     context.Response.Headers[header] = correlationId;
 
+    // Identify the caller for rate limiting (per client IP) when no ClientId header is sent.
+    if (!context.Request.Headers.ContainsKey("ClientId"))
+        context.Request.Headers["ClientId"] = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
     using (app.Logger.BeginScope(new Dictionary<string, object> { ["CorrelationId"] = correlationId.ToString() }))
     {
         app.Logger.LogInformation("Gateway {Method} {Path}", context.Request.Method, context.Request.Path);
@@ -59,3 +63,4 @@ app.Use(async (context, next) =>
 
 await app.UseOcelot();
 app.Run();
+
