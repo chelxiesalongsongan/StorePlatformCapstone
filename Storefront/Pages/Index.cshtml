@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Products";
     var signedIn = User.Identity?.IsAuthenticated == true;
+    var failing = Model.Simulation?.FailPayments == true;
 }
 
 <section class="shelf-header">
@@ -15,6 +16,29 @@
         <span class="shelf-count">@Model.Products.Count @(Model.Products.Count == 1 ? "product" : "products")</span>
     }
 </section>
+
+@if (Model.Flash is not null)
+{
+    <div class="notice notice--ok" role="status">@Model.Flash</div>
+}
+@if (Model.FlashError is not null)
+{
+    <div class="notice notice--warn" role="alert">@Model.FlashError</div>
+}
+
+@if (signedIn && Model.Simulation is not null)
+{
+    <div class="sim-bar @(failing ? "sim-bar--on" : "")">
+        <div>
+            <strong>Payment simulation:</strong>
+            @(failing ? "payments will be declined, so the next order is cancelled and its stock released." : "payments go through normally.")
+        </div>
+        <form method="post" asp-page-handler="Simulation">
+            <input type="hidden" name="failPayments" value="@(failing ? "false" : "true")" />
+            <button type="submit" class="btn-quiet">@(failing ? "Stop simulating failure" : "Simulate payment failure")</button>
+        </form>
+    </div>
+}
 
 @if (Model.ErrorMessage is not null)
 {
@@ -48,8 +72,18 @@ else
                         <span class="price">@product.Price.ToString("N2")</span>
                         <span class="stock @stockClass">@stockText</span>
                     </div>
-                    @* Order owner: replace this link with an "Add to order" button for signed-in customers. *@
-                    @if (!signedIn)
+                    @if (signedIn)
+                    {
+                        <form method="post" asp-page-handler="Order" class="order-form">
+                            <input type="hidden" name="productId" value="@product.Id" />
+                            <label class="visually-hidden" for="qty-@product.Id">Quantity</label>
+                            <input id="qty-@product.Id" type="number" name="quantity" value="1" min="1"
+                                   max="@Math.Max(product.StockQuantity, 1)" class="qty-input" />
+                            <button type="submit" class="btn-key" data-loading-text="Placing..."
+                                    disabled="@(product.StockQuantity == 0)">Place order</button>
+                        </form>
+                    }
+                    else
                     {
                         <a class="keycap__action" asp-page="/Account/Login" asp-route-returnUrl="/">Log in to order</a>
                     }
