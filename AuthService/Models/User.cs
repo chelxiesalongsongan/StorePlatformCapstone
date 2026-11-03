@@ -18,12 +18,12 @@ public static class Roles
 }
 
 public record RegisterRequest(
-    [property: Required, EmailAddress] string Email,
-    [property: Required, MinLength(8)] string Password);
+    [Required, EmailAddress] string Email,
+    [Required, MinLength(8)] string Password);
 
 public record LoginRequest(
-    [property: Required, EmailAddress] string Email,
-    [property: Required] string Password);
+    [Required, EmailAddress] string Email,
+    [Required] string Password);
 
 public record UserResponse(int Id, string Email, string Role);
 
