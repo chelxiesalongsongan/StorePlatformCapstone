@@ -1,72 +1,60 @@
-﻿<!DOCTYPE html>
+﻿@{
+    var currentPage = ViewContext.RouteData.Values["page"] as string;
+    var signedIn = User.Identity?.IsAuthenticated == true;
+    var email = User.Identity?.Name ?? string.Empty;
+}
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Store</title>
+    <title>@ViewData["Title"] - Deskworks</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/Storefront.styles.css" asp-append-version="true" />
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container">
-                <a class="navbar-brand" asp-page="/Index">Store</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
-                        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-page="/Index">Products</a>
-                        </li>
-                        @* Orders and Admin links are added here by their page owners. *@
-                    </ul>
-                    <ul class="navbar-nav">
-                        @if (User.Identity?.IsAuthenticated == true)
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="brand" asp-page="/Index"><span class="brand__key" aria-hidden="true">D</span>Deskworks</a>
+
+            <nav class="site-nav" aria-label="Main">
+                <a asp-page="/Index" aria-current="@(currentPage == "/Index" ? "page" : null)">Products</a>
+                @* Orders and Admin links are added here by their page owners. *@
+            </nav>
+
+            <div class="account">
+                @if (signedIn)
+                {
+                    <span class="user-chip">
+                        <span class="user-chip__initial" aria-hidden="true">@(email.Length > 0 ? char.ToUpperInvariant(email[0]) : '?')</span>
+                        <span class="user-chip__email">@email</span>
+                        @if (User.IsInRole("Admin"))
                         {
-                            <li class="nav-item">
-                                <span class="navbar-text me-2">
-                                    @User.Identity.Name
-                                    @if (User.IsInRole("Admin"))
-                                    {
-                                        <span class="badge bg-dark ms-1">Admin</span>
-                                    }
-                                </span>
-                            </li>
-                            <li class="nav-item">
-                                <form method="post" asp-page="/Account/Logout" class="d-inline">
-                                    <button type="submit" class="btn btn-link nav-link text-dark">Log out</button>
-                                </form>
-                            </li>
+                            <span class="role-tag">Admin</span>
                         }
-                        else
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-page="/Account/Login">Log in</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-page="/Account/Register">Register</a>
-                            </li>
-                        }
-                    </ul>
-                </div>
+                    </span>
+                    <form method="post" asp-page="/Account/Logout">
+                        <button type="submit" class="btn-quiet">Log out</button>
+                    </form>
+                }
+                else
+                {
+                    <a class="btn-quiet" asp-page="/Account/Login">Log in</a>
+                    <a class="btn-key" asp-page="/Account/Register">Create account</a>
+                }
             </div>
-        </nav>
+        </div>
     </header>
 
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
+    <main class="site-main" role="main">
+        @RenderBody()
+    </main>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - Store Platform
-        </div>
+    <footer class="site-footer">
+        <div class="site-footer__inner">&copy; 2026 Deskworks. Store Platform capstone project.</div>
     </footer>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
