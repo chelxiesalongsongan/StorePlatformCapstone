@@ -37,7 +37,7 @@ namespace InventoryService.Migrations
                     b.HasIndex("ProductId")
                         .IsUnique();
 
-                    b.ToTable("ProductStocks");
+                    b.ToTable("ProductStocks", (string)null);
                 });
 
             modelBuilder.Entity("InventoryService.Models.Reservation", b =>
@@ -66,7 +66,7 @@ namespace InventoryService.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Reservations");
+                    b.ToTable("Reservations", (string)null);
                 });
 #pragma warning restore 612, 618
         }
