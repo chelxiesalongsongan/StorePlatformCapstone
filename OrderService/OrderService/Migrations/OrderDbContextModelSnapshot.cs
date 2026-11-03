@@ -23,22 +23,26 @@ namespace OrderService.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CustomerId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("CustomerName")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("PaymentId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("PaymentStatus")
+                    b.Property<string>("FailureReason")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ReservationIds")
+                    b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<double>("TotalAmount")
-                        .HasColumnType("REAL");
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -51,7 +55,7 @@ namespace OrderService.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("OrderId")
+                    b.Property<int>("OrderId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("ProductId")
@@ -60,8 +64,8 @@ namespace OrderService.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("INTEGER");
 
-                    b.Property<double>("UnitPrice")
-                        .HasColumnType("REAL");
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -88,14 +92,34 @@ namespace OrderService.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("OrderId");
+
                     b.ToTable("OrderStatusHistories");
+                });
+
+            modelBuilder.Entity("Store.Messaging.ProcessedMessage", b =>
+                {
+                    b.Property<string>("MessageId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Consumer")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ProcessedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("MessageId", "Consumer");
+
+                    b.ToTable("ProcessedMessages");
                 });
 
             modelBuilder.Entity("OrderService.Models.OrderItem", b =>
                 {
                     b.HasOne("OrderService.Models.Order", null)
                         .WithMany("Items")
-                        .HasForeignKey("OrderId");
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("OrderService.Models.Order", b =>

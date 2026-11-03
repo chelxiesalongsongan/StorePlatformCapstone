@@ -21,6 +21,7 @@
 
   <ItemGroup>
 	  <ProjectReference Include="..\..\OnlineStore.Shared\OnlineStore.Shared.csproj" />
+	  <ProjectReference Include="..\..\src\Store.Messaging\Store.Messaging.csproj" />
   </ItemGroup>
 
 </Project>
