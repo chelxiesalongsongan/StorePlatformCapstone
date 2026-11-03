@@ -1,9 +1,17 @@
+using Microsoft.EntityFrameworkCore;
+using OrderService.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddDbContext<OrderDbContext>(o =>
+    o.UseSqlite(
+        
+builder.Configuration.GetConnectionString("OrderDb")));
 
 // Correlation ID handler
 builder.Services.AddTransient<OnlineStore.Shared.CorrelationIdHandler>();
@@ -68,6 +76,13 @@ builder.Services.AddTransient<PaymentService.Clients.PaymentApiClient>(servicePr
 });
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    scope.ServiceProvider
+        .GetRequiredService<OrderDbContext>()
+        .Database.Migrate();
+}
 
 app.UseMiddleware<OnlineStore.Shared.CorrelationIdMiddleware>();
 
