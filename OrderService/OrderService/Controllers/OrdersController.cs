@@ -1,75 +1,72 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using OrderService.Data;
 using OrderService.Models;
+using Store.Contracts;
+using Store.Messaging;
 using CatalogApiClient = OrderService.Clients.CatalogApiClient;
-using InventoryApiClient = InventoryService.Clients.InventoryApiClient;
-using InventoryApiException = InventoryService.Clients.ApiException;
-using InventoryReserveStockRequest = InventoryService.Clients.ReserveStockRequest;
 using CatalogApiException = OrderService.Clients.ApiException;
-using PaymentApiClient = PaymentService.Clients.PaymentApiClient;
-using PaymentApiException = PaymentService.Clients.ApiException;
-using PaymentChargeRequest = PaymentService.Clients.ChargeRequest;
 using ProblemDetails = Microsoft.AspNetCore.Mvc.ProblemDetails;
-using OrderService.Clients.Contracts;
 
 namespace OrderService.Controllers;
 
 [ApiController]
 [Route("orders/v1/orders")]
-public class OrdersController(CatalogApiClient catalogClient, InventoryApiClient inventoryClient, PaymentApiClient paymentClient) : ControllerBase
+public class OrdersController(
+    OrderDbContext db,
+    CatalogApiClient catalogClient,
+    IEventPublisher publisher,
+    ILogger<OrdersController> log) : ControllerBase
 {
-    private static readonly List<Order> Orders = new()
-    {
-        new Order
-        {
-            Id = 1,
-            CustomerName = "Juan Dela Cruz",
-            Items = new List<OrderItem>
-            {
-                new OrderItem
-                {
-                    Id = 1,
-                    ProductId = 1,
-                    Quantity = 2,
-                    UnitPrice = 799.99
-                }
-            },
-            TotalAmount = 1599.98
-        }
-    };
+    // Forwarded by the gateway from the JWT "sub" claim.
+    private string? CurrentUserId =>
+        Request.Headers.TryGetValue("X-User-Id", out var value) && !string.IsNullOrWhiteSpace(value)
+            ? value.ToString()
+            : null;
 
     [HttpGet]
-    public ActionResult<IEnumerable<Order>> GetOrders()
+    public async Task<ActionResult<IEnumerable<OrderDetails>>> GetOrders(CancellationToken ct)
     {
-        return Ok(Orders);
+        var query = db.Orders.AsNoTracking().Include(o => o.Items).AsQueryable();
+        if (CurrentUserId is { } userId)
+            query = query.Where(o => o.CustomerId == userId);
+
+        var orders = await query.OrderByDescending(o => o.Id).ToListAsync(ct);
+        var ids = orders.Select(o => o.Id).ToList();
+        var history = await db.OrderStatusHistories.AsNoTracking()
+            .Where(h => ids.Contains(h.OrderId))
+            .ToListAsync(ct);
+
+        return Ok(orders.Select(o => ToDetails(o, history.Where(h => h.OrderId == o.Id))).ToList());
     }
 
-    [HttpGet("{id}")]
-    public ActionResult<Order> GetOrderById(int id)
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<OrderDetails>> GetOrderById(int id, CancellationToken ct)
     {
-        var order = Orders.FirstOrDefault(o => o.Id == id);
+        var order = await FindOwnedAsync(id, ct);
+        if (order is null) return OrderNotFound(id);
 
-        if (order == null)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Resource not found",
-                Status = StatusCodes.Status404NotFound,
-                Detail = $"Order with ID {id} was not found."
-            });
-        }
+        var history = await db.OrderStatusHistories.AsNoTracking()
+            .Where(h => h.OrderId == id)
+            .ToListAsync(ct);
+        return Ok(ToDetails(order, history));
+    }
 
-        return Ok(order);
+    [HttpGet("{id:int}/items")]
+    public async Task<ActionResult<IEnumerable<OrderItemDetails>>> GetOrderItems(int id, CancellationToken ct)
+    {
+        var order = await FindOwnedAsync(id, ct);
+        if (order is null) return OrderNotFound(id);
+        return Ok(order.Items.Select(i => new OrderItemDetails(i.ProductId, i.Quantity, i.UnitPrice)).ToList());
     }
 
     [HttpPost]
-    public async Task<ActionResult<Order>> CreateOrder(OrderInput input)
+    public async Task<ActionResult<OrderDetails>> CreateOrder(OrderInput input, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(input.CustomerName) ||
             input.Items == null ||
             input.Items.Count == 0 ||
-            input.Items.Any(item =>
-                item.ProductId < 1 ||
-                item.Quantity < 1))
+            input.Items.Any(item => item.ProductId < 1 || item.Quantity < 1))
         {
             return BadRequest(new ProblemDetails
             {
@@ -79,384 +76,144 @@ public class OrdersController(CatalogApiClient catalogClient, InventoryApiClient
             });
         }
 
+        // Step 1 (synchronous, Module 3): validate products and prices through Catalog.
         var items = new List<OrderItem>();
-        var itemId = 1;
-
-        // Step 1: Validate products through Catalog Service.
         foreach (var inputItem in input.Items)
         {
             try
             {
                 var product = await catalogClient.GetProductByIdAsync(inputItem.ProductId);
-
                 items.Add(new OrderItem
                 {
-                    Id = itemId++,
                     ProductId = product.Id,
                     Quantity = inputItem.Quantity,
-                    UnitPrice = product.Price
+                    UnitPrice = (decimal)product.Price
                 });
             }
             catch (CatalogApiException ex) when (ex.StatusCode == 404)
             {
-                return NotFound(new ProblemDetails
-                {
-                    Title = "Product not found",
-                    Status = StatusCodes.Status404NotFound,
-                    Detail = $"Product with ID {inputItem.ProductId} does not exist in Catalog."
-                });
+                return Problem(statusCode: 404, title: "Product not found",
+                    detail: $"Product with ID {inputItem.ProductId} does not exist in Catalog.");
             }
             catch (CatalogApiException)
             {
-                return StatusCode(StatusCodes.Status502BadGateway, new ProblemDetails
-                {
-                    Title = "Catalog Service error",
-                    Status = StatusCodes.Status502BadGateway,
-                    Detail = "Unable to retrieve product information from Catalog Service."
-                });
+                return Problem(statusCode: 502, title: "Catalog Service error",
+                    detail: "Unable to retrieve product information from Catalog Service.");
             }
             catch (HttpRequestException)
             {
-                return StatusCode(StatusCodes.Status502BadGateway, new ProblemDetails
-                {
-                    Title = "Catalog Service unavailable",
-                    Status = StatusCodes.Status502BadGateway,
-                    Detail = "Catalog Service could not be reached."
-                });
+                return Problem(statusCode: 502, title: "Catalog Service unavailable",
+                    detail: "Catalog Service could not be reached.");
             }
             catch (TaskCanceledException)
             {
-                return StatusCode(StatusCodes.Status504GatewayTimeout, new ProblemDetails
-                {
-                    Title = "Catalog Service timeout",
-                    Status = StatusCodes.Status504GatewayTimeout,
-                    Detail = "Catalog Service did not respond in time."
-                });
+                return Problem(statusCode: 504, title: "Catalog Service timeout",
+                    detail: "Catalog Service did not respond in time.");
+            }
+            catch (Exception ex) when (ex.GetType().Namespace?.StartsWith("Polly") == true)
+            {
+                return Problem(statusCode: 503, title: "Catalog Service unavailable",
+                    detail: "Catalog Service is temporarily unavailable (circuit open or timed out).");
             }
         }
 
-        var newOrderId = Orders.Count == 0
-            ? 1
-            : Orders.Max(o => o.Id) + 1;
-
-        var reservationIds = new List<Guid>();
-
-        // Step 2: Reserve stock through Inventory Service.
-        foreach (var item in items)
-        {
-            try
-            {
-                var reservation = await inventoryClient.ReserveStockAsync(
-                    new InventoryReserveStockRequest
-                    {
-                        ProductId = item.ProductId,
-                        Quantity = item.Quantity,
-                        OrderId = newOrderId
-                    });
-
-                reservationIds.Add(reservation.Id);
-            }
-            catch (InventoryApiException ex)
-            {
-                // Step 3: Compensation - release previous reservations.
-                foreach (var reservationId in reservationIds)
-                {
-                    try
-                    {
-                        await inventoryClient.ReleaseReservationAsync(reservationId);
-                    }
-                    catch
-                    {
-                        // Continue attempting to release the remaining reservations.
-                    }
-                }
-
-                var statusCode = ex.StatusCode == 404
-                    ? StatusCodes.Status404NotFound
-                    : ex.StatusCode == 409
-                        ? StatusCodes.Status409Conflict
-                        : StatusCodes.Status502BadGateway;
-
-                return StatusCode(statusCode, new ProblemDetails
-                {
-                    Title = "Inventory Service error",
-                    Status = statusCode,
-                    Detail = ex.StatusCode == 409
-                        ? "Insufficient stock. Previous stock reservations were released."
-                        : "Unable to complete stock reservation. Previous stock reservations were released."
-                });
-            }
-            catch (HttpRequestException)
-            {
-                foreach (var reservationId in reservationIds)
-                {
-                    try
-                    {
-                        await inventoryClient.ReleaseReservationAsync(reservationId);
-                    }
-                    catch
-                    {
-                        // Continue attempting to release the remaining reservations.
-                    }
-                }
-
-                return StatusCode(StatusCodes.Status502BadGateway, new ProblemDetails
-                {
-                    Title = "Inventory Service unavailable",
-                    Status = StatusCodes.Status502BadGateway,
-                    Detail = "Inventory Service could not be reached. Previous stock reservations were released."
-                });
-            }
-            catch (TaskCanceledException)
-            {
-                foreach (var reservationId in reservationIds)
-                {
-                    try
-                    {
-                        await inventoryClient.ReleaseReservationAsync(reservationId);
-                    }
-                    catch
-                    {
-                        // Continue attempting to release the remaining reservations.
-                    }
-                }
-
-                return StatusCode(StatusCodes.Status504GatewayTimeout, new ProblemDetails
-                {
-                    Title = "Inventory Service timeout",
-                    Status = StatusCodes.Status504GatewayTimeout,
-                    Detail = "Inventory Service did not respond in time. Previous stock reservations were released."
-                });
-            }
-        }
-
-        // Step 4: Charge payment through Payment Service.
-        var totalAmount = items.Sum(item => item.Quantity * item.UnitPrice);
-
-        PaymentService.Clients.Payment payment;
-
-        try
-        {
-            payment = await paymentClient.ChargePaymentAsync(
-                new PaymentChargeRequest
-                {
-                    OrderId = newOrderId,
-                    Amount = totalAmount,
-                    ForceFailure = input.ForcePaymentFailure
-                });
-        }
-        catch (PaymentApiException ex)
-        {
-            // Compensation: release all stock reservations if payment fails.
-            foreach (var reservationId in reservationIds)
-            {
-                try
-                {
-                    await inventoryClient.ReleaseReservationAsync(reservationId);
-                }
-                catch
-                {
-                    // Continue attempting to release the remaining reservations.
-                }
-            }
-
-            var statusCode = ex.StatusCode == 402
-                ? StatusCodes.Status402PaymentRequired
-                : StatusCodes.Status502BadGateway;
-
-            return StatusCode(statusCode, new ProblemDetails
-            {
-                Title = ex.StatusCode == 402
-                    ? "Payment declined"
-                    : "Payment Service error",
-                Status = statusCode,
-                Detail = ex.StatusCode == 402
-                    ? "Payment was declined. All previous stock reservations were released."
-                    : "Payment Service could not complete the transaction. Stock reservations were released."
-            });
-        }
-        catch (HttpRequestException)
-        {
-            foreach (var reservationId in reservationIds)
-            {
-                try
-                {
-                    await inventoryClient.ReleaseReservationAsync(reservationId);
-                }
-                catch
-                {
-                    // Continue attempting to release the remaining reservations.
-                }
-            }
-
-            return StatusCode(StatusCodes.Status502BadGateway, new ProblemDetails
-            {
-                Title = "Payment Service unavailable",
-                Status = StatusCodes.Status502BadGateway,
-                Detail = "Payment Service could not be reached. Stock reservations were released."
-            });
-        }
-        catch (TaskCanceledException)
-        {
-            foreach (var reservationId in reservationIds)
-            {
-                try
-                {
-                    await inventoryClient.ReleaseReservationAsync(reservationId);
-                }
-                catch
-                {
-                    // Continue attempting to release the remaining reservations.
-                }
-            }
-
-            return StatusCode(StatusCodes.Status504GatewayTimeout, new ProblemDetails
-            {
-                Title = "Payment Service timeout",
-                Status = StatusCodes.Status504GatewayTimeout,
-                Detail = "Payment Service did not respond in time. Stock reservations were released."
-            });
-        }
-        // Step 4: Save the order only after all reservations succeed.
+        // Step 2 (local transaction): save the order as Pending with its first history entry.
         var order = new Order
         {
-            Id = newOrderId,
-            CustomerName = input.CustomerName,
+            CustomerId = CurrentUserId ?? "anonymous",
+            CustomerName = input.CustomerName.Trim(),
             Items = items,
-            TotalAmount = totalAmount,
-            ReservationIds = reservationIds,
-            PaymentId = payment.Id,
-            PaymentStatus = payment.Status.ToString()
+            TotalAmount = items.Sum(i => i.Quantity * i.UnitPrice),
+            Status = OrderStatuses.Pending
         };
 
-        Orders.Add(order);
+        await using (var tx = await db.Database.BeginTransactionAsync(ct))
+        {
+            db.Orders.Add(order);
+            await db.SaveChangesAsync(ct);
+            db.OrderStatusHistories.Add(new OrderStatusHistory
+            {
+                OrderId = order.Id, Status = OrderStatuses.Pending, CreatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        }
 
-        return CreatedAtAction(
-            nameof(GetOrderById),
-            new { id = order.Id },
-            order);
+        // Step 3: start the saga. Inventory, Payment and this service continue it over RabbitMQ.
+        try
+        {
+            publisher.Publish(RoutingKeys.OrderPlaced, new OrderPlaced(
+                order.Id,
+                order.CustomerId,
+                items.Select(i => new OrderLine(i.ProductId, i.Quantity, i.UnitPrice)).ToList(),
+                order.TotalAmount));
+        }
+        catch (Exception ex)
+        {
+            log.LogError(ex, "Could not publish OrderPlaced for order {OrderId}; cancelling it", order.Id);
+            order.Status = OrderStatuses.Cancelled;
+            order.FailureReason = "Order processing could not start.";
+            db.OrderStatusHistories.Add(new OrderStatusHistory
+            {
+                OrderId = order.Id, Status = OrderStatuses.Cancelled, CreatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync(ct);
+            return Problem(statusCode: 503, title: "Order processing unavailable",
+                detail: "The order was cancelled because the message broker could not be reached. Try again shortly.");
+        }
+
+        log.LogInformation("Order {OrderId} placed for customer {CustomerId}; saga started", order.Id, order.CustomerId);
+
+        var startHistory = await db.OrderStatusHistories.AsNoTracking()
+            .Where(h => h.OrderId == order.Id)
+            .ToListAsync(ct);
+        return AcceptedAtAction(nameof(GetOrderById), new { id = order.Id }, ToDetails(order, startHistory));
     }
 
-    [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateOrder(int id, OrderInput input)
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> UpdateOrder(int id, OrderInput input, CancellationToken ct)
     {
-        var order = Orders.FirstOrDefault(o => o.Id == id);
+        var order = await FindOwnedAsync(id, ct);
+        if (order is null) return OrderNotFound(id);
 
-        if (order == null)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Resource not found",
-                Status = StatusCodes.Status404NotFound,
-                Detail = $"Order with ID {id} was not found."
-            });
-        }
+        return Problem(statusCode: 409, title: "Order cannot be changed",
+            detail: "Orders are processed as soon as they are placed. Cancel and place a new order instead.");
+    }
 
-        if (string.IsNullOrWhiteSpace(input.CustomerName) ||
-            input.Items == null ||
-            input.Items.Count == 0 ||
-            input.Items.Any(item =>
-                item.ProductId < 1 ||
-                item.Quantity < 1))
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Validation error",
-                Status = StatusCodes.Status400BadRequest,
-                Detail = "Customer name and at least one valid order item are required."
-            });
-        }
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> DeleteOrder(int id, CancellationToken ct)
+    {
+        var order = await db.Orders.FirstOrDefaultAsync(
+            o => o.Id == id && (CurrentUserId == null || o.CustomerId == CurrentUserId), ct);
+        if (order is null) return OrderNotFound(id);
 
-        var items = new List<OrderItem>();
-        var itemId = 1;
+        if (order.Status is not (OrderStatuses.Confirmed or OrderStatuses.Cancelled))
+            return Problem(statusCode: 409, title: "Order is still processing",
+                detail: "Wait until the order is Confirmed or Cancelled before deleting it.");
 
-        foreach (var inputItem in input.Items)
-        {
-            Product product;
-
-            try
-            {
-                product = await catalogClient.GetProductByIdAsync(inputItem.ProductId);
-            }
-            catch (CatalogApiException ex) when (ex.StatusCode == 404)
-            {
-                return NotFound(new ProblemDetails
-                {
-                    Title = "Product not found",
-                    Status = StatusCodes.Status404NotFound,
-                    Detail = $"Product with ID {inputItem.ProductId} does not exist in Catalog."
-                });
-            }
-            catch (CatalogApiException)
-            {
-                return StatusCode(StatusCodes.Status502BadGateway, new ProblemDetails
-                {
-                    Title = "Catalog Service error",
-                    Status = StatusCodes.Status502BadGateway,
-                    Detail = "Unable to retrieve product information from Catalog Service."
-                });
-            }
-            catch (HttpRequestException)
-            {
-                return StatusCode(StatusCodes.Status502BadGateway, new ProblemDetails
-                {
-                    Title = "Catalog Service unavailable",
-                    Status = StatusCodes.Status502BadGateway,
-                    Detail = "Catalog Service could not be reached."
-                });
-            }
-
-            items.Add(new OrderItem
-            {
-                Id = itemId++,
-                ProductId = product.Id,
-                Quantity = inputItem.Quantity,
-                UnitPrice = product.Price
-            });
-        }
-
-        order.CustomerName = input.CustomerName;
-        order.Items = items;
-        order.TotalAmount = items.Sum(item => item.Quantity * item.UnitPrice);
-
+        db.OrderStatusHistories.RemoveRange(db.OrderStatusHistories.Where(h => h.OrderId == id));
+        db.Orders.Remove(order);
+        await db.SaveChangesAsync(ct);
         return NoContent();
     }
 
-    [HttpDelete("{id}")]
-    public IActionResult DeleteOrder(int id)
-    {
-        var order = Orders.FirstOrDefault(o => o.Id == id);
+    private Task<Order?> FindOwnedAsync(int id, CancellationToken ct) =>
+        db.Orders.AsNoTracking()
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.Id == id && (CurrentUserId == null || o.CustomerId == CurrentUserId), ct);
 
-        if (order == null)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Resource not found",
-                Status = StatusCodes.Status404NotFound,
-                Detail = $"Order with ID {id} was not found."
-            });
-        }
+    private ObjectResult OrderNotFound(int id) =>
+        Problem(statusCode: 404, title: "Resource not found", detail: $"Order with ID {id} was not found.");
 
-        Orders.Remove(order);
-
-        return NoContent();
-    }
-
-    [HttpGet("{id}/items")]
-    public ActionResult<IEnumerable<OrderItem>> GetOrderItems(int id)
-    {
-        var order = Orders.FirstOrDefault(o => o.Id == id);
-
-        if (order == null)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Resource not found",
-                Status = StatusCodes.Status404NotFound,
-                Detail = $"Order with ID {id} was not found."
-            });
-        }
-
-        return Ok(order.Items);
-    }
+    private static OrderDetails ToDetails(Order o, IEnumerable<OrderStatusHistory> history) => new(
+        o.Id,
+        o.CustomerId,
+        o.CustomerName,
+        o.Status,
+        o.FailureReason,
+        o.TotalAmount,
+        o.CreatedAt,
+        o.Items.Select(i => new OrderItemDetails(i.ProductId, i.Quantity, i.UnitPrice)).ToList(),
+        history.OrderBy(h => h.CreatedAt).ThenBy(h => h.Id)
+            .Select(h => new OrderStatusEntry(h.Status, h.CreatedAt)).ToList());
 }
