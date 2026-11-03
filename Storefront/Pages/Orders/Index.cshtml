@@ -1,0 +1,51 @@
+﻿@page
+@model Storefront.Pages.Orders.IndexModel
+@using Storefront.Models
+@{
+    ViewData["Title"] = "My orders";
+}
+
+<h1 class="page-title">My orders</h1>
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="notice notice--warn" role="status">@Model.ErrorMessage</div>
+}
+else if (Model.MyOrders.Count == 0)
+{
+    <div class="empty">
+        <strong>No orders yet.</strong>
+        <p>Pick something from the <a asp-page="/Index">products page</a> to place your first order.</p>
+    </div>
+}
+else
+{
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Order</th>
+                    <th>Placed</th>
+                    <th class="num">Items</th>
+                    <th class="num">Total</th>
+                    <th>Status</th>
+                    <th><span class="visually-hidden">Details</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in Model.MyOrders)
+                {
+                    var statusClass = order.Status switch { "Confirmed" => "status--confirmed", "Cancelled" => "status--cancelled", _ => "" };
+                    <tr>
+                        <td>@order.Id</td>
+                        <td>@order.CreatedAt.ToLocalTime().ToString("MMM d, HH:mm")</td>
+                        <td class="num">@order.Items.Sum(i => i.Quantity)</td>
+                        <td class="num">@order.TotalAmount.ToString("N2")</td>
+                        <td><span class="status @statusClass">@OrderDetails.Label(order.Status)</span></td>
+                        <td><a asp-page="/Orders/Details" asp-route-id="@order.Id">View</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
