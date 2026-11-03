@@ -1,4 +1,5 @@
-﻿# StorePlatformCapstone
+# StorePlatformCapstone
+
 ## Running the system
 
 ### Prerequisites
