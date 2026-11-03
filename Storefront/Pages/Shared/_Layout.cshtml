@@ -8,17 +8,17 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Deskworks</title>
+    <title>@ViewData["Title"] - Pitwall Supply</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,400;0,600;0,700;0,900;1,600;1,700&display=swap" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
     <header class="site-header">
         <div class="site-header__inner">
-            <a class="brand" asp-page="/Index"><span class="brand__key" aria-hidden="true">D</span>Deskworks</a>
+            <a class="brand" asp-page="/Index"><span class="brand__mark" aria-hidden="true"></span>Pitwall Supply</a>
 
             <nav class="site-nav" aria-label="Main">
                 <a asp-page="/Index" aria-current="@(currentPage == "/Index" ? "page" : null)">Products</a>
@@ -61,7 +61,7 @@
     </main>
 
     <footer class="site-footer">
-        <div class="site-footer__inner">&copy; 2026 Deskworks. Store Platform capstone project.</div>
+        <div class="site-footer__inner">&copy; 2026 Pitwall Supply. Store Platform capstone project.</div>
     </footer>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
@@ -70,4 +70,5 @@
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
+
 
