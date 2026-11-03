@@ -37,7 +37,7 @@ namespace InventoryService.Migrations
                     b.HasIndex("ProductId")
                         .IsUnique();
 
-                    b.ToTable("ProductStocks", (string)null);
+                    b.ToTable("ProductStocks");
                 });
 
             modelBuilder.Entity("InventoryService.Models.Reservation", b =>
@@ -66,7 +66,23 @@ namespace InventoryService.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Reservations", (string)null);
+                    b.ToTable("Reservations");
+                });
+
+            modelBuilder.Entity("Store.Messaging.ProcessedMessage", b =>
+                {
+                    b.Property<string>("MessageId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Consumer")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ProcessedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("MessageId", "Consumer");
+
+                    b.ToTable("ProcessedMessages");
                 });
 #pragma warning restore 612, 618
         }
