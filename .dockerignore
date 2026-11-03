@@ -1,0 +1,9 @@
+﻿**/bin/
+**/obj/
+**/*.db
+**/*.db-*
+.git
+.vs
+.env
+**/node_modules/
+Evidence/
