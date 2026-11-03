@@ -11,6 +11,7 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Store.Contracts/Store.Contracts.csproj" />
+    <Project Path="src/Store.Messaging/Store.Messaging.csproj" />
   </Folder>
   <Project Path="OnlineStore.Shared/OnlineStore.Shared.csproj" />
   <Project Path="PaymentService/PaymentService.csproj" />
