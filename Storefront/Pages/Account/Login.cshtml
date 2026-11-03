@@ -1,0 +1,45 @@
+﻿@page
+@model Storefront.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = "Log in";
+}
+
+<div class="auth">
+    <section class="auth-panel">
+        <h1>Log in</h1>
+        <p class="auth-panel__lead">Use the email you registered with.</p>
+
+        @if (TempData["Message"] is string message)
+        {
+            <div class="notice notice--ok" role="status">@message</div>
+        }
+
+        <form method="post" novalidate>
+            <div asp-validation-summary="ModelOnly" class="form-errors" role="alert"></div>
+            <input type="hidden" asp-for="ReturnUrl" />
+
+            <div class="field">
+                <label asp-for="Input.Email">Email</label>
+                <input asp-for="Input.Email" autocomplete="username" />
+                <span asp-validation-for="Input.Email" class="field-error"></span>
+            </div>
+
+            <div class="field">
+                <label asp-for="Input.Password">Password</label>
+                <div class="password-wrap">
+                    <input asp-for="Input.Password" autocomplete="current-password" />
+                    <button type="button" class="password-toggle" data-toggle-password="Input_Password" aria-pressed="false">Show</button>
+                </div>
+                <span asp-validation-for="Input.Password" class="field-error"></span>
+            </div>
+
+            <button type="submit" class="btn-key btn-key--block" data-loading-text="Logging in...">Log in</button>
+        </form>
+
+        <p class="auth-panel__switch">New here? <a asp-page="/Account/Register">Create an account</a></p>
+    </section>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
