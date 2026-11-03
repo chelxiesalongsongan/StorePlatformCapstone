@@ -1,5 +1,6 @@
-using InventoryService.Models;
+﻿using InventoryService.Models;
 using Microsoft.EntityFrameworkCore;
+using Store.Messaging;
 
 namespace InventoryService.Data;
 
@@ -14,6 +15,8 @@ public class InventoryDbContext : DbContext
 
     public DbSet<Reservation> Reservations => Set<Reservation>();
 
+    public DbSet<ProcessedMessage> ProcessedMessages => Set<ProcessedMessage>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -24,5 +27,8 @@ public class InventoryDbContext : DbContext
 
         modelBuilder.Entity<Reservation>()
             .HasKey(r => r.Id);
+
+        modelBuilder.Entity<ProcessedMessage>()
+            .HasKey(p => new { p.MessageId, p.Consumer });
     }
 }

@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/CatalogService/">
+    <Project Path="CatalogService/CatalogService/CatalogService.csproj" />
+  </Folder>
+  <Folder Name="/InventoryService/">
+    <Project Path="InventoryService/InventorySeeder/InventorySeeder.csproj" />
+    <Project Path="InventoryService/InventoryService/InventoryService.csproj" />
+  </Folder>
+  <Folder Name="/OrderService/">
+    <Project Path="OrderService/OrderService/OrderService.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Store.Contracts/Store.Contracts.csproj" />
+    <Project Path="src/Store.Messaging/Store.Messaging.csproj" />
+  </Folder>
+  <Project Path="OnlineStore.Shared/OnlineStore.Shared.csproj" />
+  <Project Path="PaymentService/PaymentService.csproj" />
+</Solution>
