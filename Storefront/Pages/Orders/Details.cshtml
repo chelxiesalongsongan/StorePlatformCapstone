@@ -16,7 +16,10 @@
 {
     <div class="notice notice--warn" role="status">
         <strong>This order was cancelled.</strong>
-        @(o.FailureReason ?? "It couldn't be completed.") Any reserved stock was released and any payment refunded.
+        @(o.FailureReason?.TrimEnd('.') ?? "It couldn't be completed").
+        @(o.FailureReason?.Contains("Payment", StringComparison.OrdinalIgnoreCase) == true
+            ? "The reserved stock was released and any charge refunded."
+            : "No stock was reserved and nothing was charged.")
     </div>
 }
 else if (o.Status == "Confirmed")
@@ -90,3 +93,4 @@ else
         <script>setTimeout(() => location.reload(), 2000);</script>
     }
 }
+
