@@ -13,6 +13,9 @@
     <Project Path="src/Store.Contracts/Store.Contracts.csproj" />
     <Project Path="src/Store.Messaging/Store.Messaging.csproj" />
   </Folder>
+  <Project Path="ApiGateway/ApiGateway.csproj" />
+  <Project Path="AuthService/AuthService.csproj" />
   <Project Path="OnlineStore.Shared/OnlineStore.Shared.csproj" />
   <Project Path="PaymentService/PaymentService.csproj" />
+  <Project Path="Storefront/Storefront.csproj" />
 </Solution>
