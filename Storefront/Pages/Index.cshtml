@@ -1,10 +1,34 @@
 ﻿@page
 @model IndexModel
 @{
-    ViewData["Title"] = "Home page";
+    ViewData["Title"] = "Products";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<h1 class="h3 mb-4">Products</h1>
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="alert alert-warning">@Model.ErrorMessage</div>
+}
+else if (Model.Products.Count == 0)
+{
+    <p class="text-muted">No products available yet.</p>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-3 g-3">
+        @foreach (var product in Model.Products)
+        {
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h2 class="h5 card-title">@product.Name</h2>
+                        <p class="card-text text-muted">@product.Description</p>
+                        <p class="card-text fw-semibold mb-1">@product.Price.ToString("N2")</p>
+                        <p class="card-text small text-muted">@product.StockQuantity in stock</p>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
