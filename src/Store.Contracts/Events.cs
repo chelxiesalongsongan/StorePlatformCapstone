@@ -1,14 +1,14 @@
 ﻿namespace Store.Contracts;
 
-public record OrderLine(Guid ProductId, int Quantity, decimal UnitPrice);
+public record OrderLine(int ProductId, int Quantity, decimal UnitPrice);
 
-public record OrderPlaced(Guid OrderId, Guid CustomerId, IReadOnlyList<OrderLine> Lines, decimal Total);
-public record StockReserved(Guid OrderId, decimal Total);
-public record StockReservationFailed(Guid OrderId, string Reason);
-public record PaymentCharged(Guid OrderId, Guid PaymentId, decimal Amount);
-public record PaymentFailed(Guid OrderId, string Reason);
-public record StockReleaseRequested(Guid OrderId);
-public record RefundRequested(Guid OrderId, Guid PaymentId);
+public record OrderPlaced(int OrderId, string CustomerId, IReadOnlyList<OrderLine> Lines, decimal Total);
+public record StockReserved(int OrderId, decimal Total);
+public record StockReservationFailed(int OrderId, string Reason);
+public record PaymentCharged(int OrderId, decimal Amount);
+public record PaymentFailed(int OrderId, string Reason);
+public record StockReleaseRequested(int OrderId);
+public record RefundRequested(int OrderId);
 
 public static class RoutingKeys
 {
