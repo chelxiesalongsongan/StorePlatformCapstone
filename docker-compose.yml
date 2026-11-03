@@ -1,50 +1,110 @@
-version: '3.8'
-
-services:
+﻿services:
 
   rabbitmq:
     image: rabbitmq:3-management
-    container_name: rabbitmq
     ports:
       - "5672:5672"
-      - "15672:15672"
+      - "15672:15672"   # management UI: http://localhost:15672 (guest / guest)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
 
-  catalogservice:
+  catalog-service:
     build:
-      context: ./CatalogService/CatalogService
-      dockerfile: Dockerfile
-    container_name: catalogservice
-    ports:
-      - "5001:8080"
-    depends_on:
-      - rabbitmq
+      context: .
+      dockerfile: CatalogService/CatalogService/Dockerfile
+    environment:
+      - Logging__Console__FormatterName=simple
+      - Logging__Console__FormatterOptions__IncludeScopes=true
+      - Logging__Console__FormatterOptions__SingleLine=true
 
-  inventoryservice:
+  inventory-service:
     build:
-      context: ./InventoryService/InventoryService
-      dockerfile: Dockerfile
-    container_name: inventoryservice
-    ports:
-      - "5002:8080"
+      context: .
+      dockerfile: InventoryService/InventoryService/Dockerfile
+    environment:
+      - Logging__Console__FormatterName=simple
+      - Logging__Console__FormatterOptions__IncludeScopes=true
+      - Logging__Console__FormatterOptions__SingleLine=true
+      - Rabbit__Host=rabbitmq
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
 
-  orderservice:
+  payment-service:
     build:
-      context: ./OrderService/OrderService
-      dockerfile: Dockerfile
-    container_name: orderservice
-    ports:
-      - "5003:8080"
+      context: .
+      dockerfile: PaymentService/Dockerfile
+    environment:
+      - Logging__Console__FormatterName=simple
+      - Logging__Console__FormatterOptions__IncludeScopes=true
+      - Logging__Console__FormatterOptions__SingleLine=true
+      - Rabbit__Host=rabbitmq
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
 
-  paymentservice:
+  order-service:
     build:
-      context: ./PaymentService
-      dockerfile: Dockerfile
-    container_name: paymentservice
-    ports:
-      - "5004:8080"
+      context: .
+      dockerfile: OrderService/OrderService/Dockerfile
+    environment:
+      - Logging__Console__FormatterName=simple
+      - Logging__Console__FormatterOptions__IncludeScopes=true
+      - Logging__Console__FormatterOptions__SingleLine=true
+      - Rabbit__Host=rabbitmq
+      - Services__Catalog=http://catalog-service:8080
+      - Services__Inventory=http://inventory-service:8080
+      - Services__Payment=http://payment-service:8080
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
+      catalog-service:
+        condition: service_started
+
+  auth-service:
+    build: ./AuthService
+    environment:
+      - Logging__Console__FormatterName=simple
+      - Logging__Console__FormatterOptions__IncludeScopes=true
+      - Logging__Console__FormatterOptions__SingleLine=true
+      - Jwt__Key=${JWT_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
+      - Seed__AdminEmail=${ADMIN_EMAIL}
+      - Seed__AdminPassword=${ADMIN_PASSWORD}
+
+  gateway:
+    build: ./ApiGateway
+    ports:
+      - "8080:8080"     # the single entry point: http://localhost:8080
+    environment:
+      - Logging__Console__FormatterName=simple
+      - Logging__Console__FormatterOptions__IncludeScopes=true
+      - Logging__Console__FormatterOptions__SingleLine=true
+      - Jwt__Key=${JWT_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
+    depends_on:
+      - auth-service
+      - catalog-service
+      - inventory-service
+      - order-service
+      - payment-service
+
+  storefront:
+    build: ./Storefront
+    ports:
+      - "5000:8080"     # the store UI: http://localhost:5000
+    environment:
+      - Logging__Console__FormatterName=simple
+      - Logging__Console__FormatterOptions__IncludeScopes=true
+      - Logging__Console__FormatterOptions__SingleLine=true
+      - Gateway__BaseUrl=http://gateway:8080/
+    depends_on:
+      - gateway
+
+
