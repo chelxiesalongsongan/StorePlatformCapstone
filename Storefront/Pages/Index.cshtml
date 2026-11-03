@@ -2,33 +2,59 @@
 @model IndexModel
 @{
     ViewData["Title"] = "Products";
+    var signedIn = User.Identity?.IsAuthenticated == true;
 }
 
-<h1 class="h3 mb-4">Products</h1>
+<section class="shelf-header">
+    <div>
+        <h1>Gear for the desk you actually use</h1>
+        <p>@(signedIn ? "Pick what you need and place an order." : "Browse freely. Log in when you're ready to order.")</p>
+    </div>
+    @if (Model.ErrorMessage is null && Model.Products.Count > 0)
+    {
+        <span class="shelf-count">@Model.Products.Count @(Model.Products.Count == 1 ? "product" : "products")</span>
+    }
+</section>
 
 @if (Model.ErrorMessage is not null)
 {
-    <div class="alert alert-warning">@Model.ErrorMessage</div>
+    <div class="notice notice--warn" role="status">
+        <strong>Products couldn't load.</strong>
+        The catalog isn't responding. Refresh the page in a moment.
+    </div>
 }
 else if (Model.Products.Count == 0)
 {
-    <p class="text-muted">No products available yet.</p>
+    <div class="empty">
+        <strong>No products yet.</strong>
+        <p>An admin can add products from the admin area.</p>
+    </div>
 }
 else
 {
-    <div class="row row-cols-1 row-cols-md-3 g-3">
+    <ul class="keyboard">
         @foreach (var product in Model.Products)
         {
-            <div class="col">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h2 class="h5 card-title">@product.Name</h2>
-                        <p class="card-text text-muted">@product.Description</p>
-                        <p class="card-text fw-semibold mb-1">@product.Price.ToString("N2")</p>
-                        <p class="card-text small text-muted">@product.StockQuantity in stock</p>
+            var stockClass = product.StockQuantity == 0 ? "stock--out" : product.StockQuantity <= 5 ? "stock--low" : "";
+            var stockText = product.StockQuantity == 0 ? "Out of stock"
+                : product.StockQuantity <= 5 ? $"Only {product.StockQuantity} left"
+                : $"{product.StockQuantity} in stock";
+
+            <li>
+                <article class="keycap">
+                    <h2>@product.Name</h2>
+                    <p class="keycap__desc">@product.Description</p>
+                    <div class="keycap__foot">
+                        <span class="price">@product.Price.ToString("N2")</span>
+                        <span class="stock @stockClass">@stockText</span>
                     </div>
-                </div>
-            </div>
+                    @* Order owner: replace this link with an "Add to order" button for signed-in customers. *@
+                    @if (!signedIn)
+                    {
+                        <a class="keycap__action" asp-page="/Account/Login" asp-route-returnUrl="/">Log in to order</a>
+                    }
+                </article>
+            </li>
         }
-    </div>
+    </ul>
 }

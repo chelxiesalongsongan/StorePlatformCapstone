@@ -1,36 +1,46 @@
 ﻿@page
 @model Storefront.Pages.Account.RegisterModel
 @{
-    ViewData["Title"] = "Register";
+    ViewData["Title"] = "Create account";
 }
 
-<div class="row justify-content-center">
-    <div class="col-md-5">
-        <h1 class="h3 mb-3">Create an account</h1>
+<div class="auth">
+    <section class="auth-panel">
+        <h1>Create an account</h1>
+        <p class="auth-panel__lead">You'll use it to place and track orders.</p>
 
-        <form method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+        <form method="post" novalidate>
+            <div asp-validation-summary="ModelOnly" class="form-errors" role="alert"></div>
 
-            <div class="mb-3">
-                <label asp-for="Input.Email" class="form-label">Email</label>
-                <input asp-for="Input.Email" class="form-control" autocomplete="username" />
-                <span asp-validation-for="Input.Email" class="text-danger"></span>
+            <div class="field">
+                <label asp-for="Input.Email">Email</label>
+                <input asp-for="Input.Email" autocomplete="username" />
+                <span asp-validation-for="Input.Email" class="field-error"></span>
             </div>
-            <div class="mb-3">
-                <label asp-for="Input.Password" class="form-label">Password</label>
-                <input asp-for="Input.Password" class="form-control" autocomplete="new-password" />
-                <span asp-validation-for="Input.Password" class="text-danger"></span>
+
+            <div class="field">
+                <label asp-for="Input.Password">Password</label>
+                <div class="password-wrap">
+                    <input asp-for="Input.Password" autocomplete="new-password" />
+                    <button type="button" class="password-toggle" data-toggle-password="Input_Password" aria-pressed="false">Show</button>
+                </div>
+                <span asp-validation-for="Input.Password" class="field-error"></span>
             </div>
-            <div class="mb-3">
-                <label asp-for="Input.ConfirmPassword" class="form-label"></label>
-                <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" />
-                <span asp-validation-for="Input.ConfirmPassword" class="text-danger"></span>
+
+            <div class="field">
+                <label asp-for="Input.ConfirmPassword">Confirm password</label>
+                <div class="password-wrap">
+                    <input asp-for="Input.ConfirmPassword" autocomplete="new-password" />
+                    <button type="button" class="password-toggle" data-toggle-password="Input_ConfirmPassword" aria-pressed="false">Show</button>
+                </div>
+                <span asp-validation-for="Input.ConfirmPassword" class="field-error"></span>
             </div>
-            <button type="submit" class="btn btn-primary w-100">Register</button>
+
+            <button type="submit" class="btn-key btn-key--block" data-loading-text="Creating account...">Create account</button>
         </form>
 
-        <p class="mt-3">Already registered? <a asp-page="/Account/Login">Log in</a></p>
-    </div>
+        <p class="auth-panel__switch">Already have an account? <a asp-page="/Account/Login">Log in</a></p>
+    </section>
 </div>
 
 @section Scripts {
