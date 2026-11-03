@@ -28,7 +28,17 @@ var app = builder.Build();
 // Apply migrations at startup so a clean clone has its tables
 using (var scope = app.Services.CreateScope())
 {
-    scope.ServiceProvider.GetRequiredService<InventoryDbContext>().Database.Migrate();
+    var inventoryDb = scope.ServiceProvider.GetRequiredService<InventoryDbContext>();
+    inventoryDb.Database.Migrate();
+
+    // Starting stock for the catalog's products, so a clean clone can take orders.
+    var seedStock = new Dictionary<int, int> { [1] = 25, [2] = 15 };
+    foreach (var (productId, quantity) in seedStock)
+    {
+        if (!inventoryDb.ProductStocks.Any(s => s.ProductId == productId))
+            inventoryDb.ProductStocks.Add(new InventoryService.Models.ProductStock { ProductId = productId, QuantityAvailable = quantity });
+    }
+    inventoryDb.SaveChanges();
 }
 
 app.UseMiddleware<OnlineStore.Shared.CorrelationIdMiddleware>();
@@ -46,3 +56,4 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
