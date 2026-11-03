@@ -1,0 +1,94 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Products";
+    var signedIn = User.Identity?.IsAuthenticated == true;
+    var failing = Model.Simulation?.FailPayments == true;
+}
+
+<section class="shelf-header">
+    <div>
+        <h1>Gear for the desk you actually use</h1>
+        <p>@(signedIn ? "Pick what you need and place an order." : "Browse freely. Log in when you're ready to order.")</p>
+    </div>
+    @if (Model.ErrorMessage is null && Model.Products.Count > 0)
+    {
+        <span class="shelf-count">@Model.Products.Count @(Model.Products.Count == 1 ? "product" : "products")</span>
+    }
+</section>
+
+@if (Model.Flash is not null)
+{
+    <div class="notice notice--ok" role="status">@Model.Flash</div>
+}
+@if (Model.FlashError is not null)
+{
+    <div class="notice notice--warn" role="alert">@Model.FlashError</div>
+}
+
+@if (signedIn && Model.Simulation is not null)
+{
+    <div class="sim-bar @(failing ? "sim-bar--on" : "")">
+        <div>
+            <strong>Payment simulation:</strong>
+            @(failing ? "payments will be declined, so the next order is cancelled and its stock released." : "payments go through normally.")
+        </div>
+        <form method="post" asp-page-handler="Simulation">
+            <input type="hidden" name="failPayments" value="@(failing ? "false" : "true")" />
+            <button type="submit" class="btn-quiet">@(failing ? "Stop simulating failure" : "Simulate payment failure")</button>
+        </form>
+    </div>
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="notice notice--warn" role="status">
+        <strong>Products couldn't load.</strong>
+        The catalog isn't responding. Refresh the page in a moment.
+    </div>
+}
+else if (Model.Products.Count == 0)
+{
+    <div class="empty">
+        <strong>No products yet.</strong>
+        <p>An admin can add products from the admin area.</p>
+    </div>
+}
+else
+{
+    <ul class="keyboard">
+        @foreach (var product in Model.Products)
+        {
+            var stockClass = product.StockQuantity == 0 ? "stock--out" : product.StockQuantity <= 5 ? "stock--low" : "";
+            var stockText = product.StockQuantity == 0 ? "Out of stock"
+                : product.StockQuantity <= 5 ? $"Only {product.StockQuantity} left"
+                : $"{product.StockQuantity} in stock";
+
+            <li>
+                <article class="keycap">
+                    <h2>@product.Name</h2>
+                    <p class="keycap__desc">@product.Description</p>
+                    <div class="keycap__foot">
+                        <span class="price">@product.Price.ToString("N2")</span>
+                        <span class="stock @stockClass">@stockText</span>
+                    </div>
+                    @if (signedIn)
+                    {
+                        <form method="post" asp-page-handler="Order" class="order-form">
+                            <input type="hidden" name="productId" value="@product.Id" />
+                            <label class="visually-hidden" for="qty-@product.Id">Quantity</label>
+                            <input id="qty-@product.Id" type="number" name="quantity" value="1" min="1"
+                                   max="@Math.Max(product.StockQuantity, 1)" class="qty-input" />
+                            <button type="submit" class="btn-key" data-loading-text="Placing..."
+                                    disabled="@(product.StockQuantity == 0)">Place order</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <a class="keycap__action" asp-page="/Account/Login" asp-route-returnUrl="/">Log in to order</a>
+                    }
+                </article>
+            </li>
+        }
+    </ul>
+}

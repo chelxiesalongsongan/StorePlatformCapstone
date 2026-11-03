@@ -1,0 +1,20 @@
+﻿@page
+@{
+    ViewData["Title"] = "Admins only";
+}
+
+<div class="auth">
+    <section class="auth-panel">
+        <h1>Admins only</h1>
+        <p class="auth-panel__lead">
+            You're logged in as @User.Identity?.Name, which can't make this change.
+            Log in with an admin account to manage products and stock.
+        </p>
+        <div class="auth-panel__actions">
+            <a class="btn-key" asp-page="/Index">Back to products</a>
+            <form method="post" asp-page="/Account/Logout">
+                <button type="submit" class="btn-quiet">Log in as someone else</button>
+            </form>
+        </div>
+    </section>
+</div>

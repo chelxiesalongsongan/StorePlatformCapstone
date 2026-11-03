@@ -1,0 +1,53 @@
+﻿@page
+@model Storefront.Pages.Admin.StockModel
+@{
+    ViewData["Title"] = "Stock";
+}
+
+<h1 class="page-title">Stock</h1>
+<p class="text-muted mb-4">Add or remove stock for each product. Use a negative number to remove. Only admins can make changes.</p>
+
+@if (Model.Flash is not null)
+{
+    <div class="notice notice--ok" role="status">@Model.Flash</div>
+}
+@if (Model.FlashError is not null)
+{
+    <div class="notice notice--warn" role="alert">@Model.FlashError</div>
+}
+
+@if (Model.ErrorMessage is not null)
+{
+    <div class="notice notice--warn" role="status">@Model.ErrorMessage</div>
+}
+else
+{
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th class="num">Available</th>
+                    <th>Change stock</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        <td>@row.Product.Name</td>
+                        <td class="num">@(row.Available?.ToString() ?? "No stock record")</td>
+                        <td>
+                            <form method="post" asp-page-handler="Adjust" class="inline-form">
+                                <input type="hidden" name="productId" value="@row.Product.Id" />
+                                <label class="visually-hidden" for="change-@row.Product.Id">Change for @row.Product.Name</label>
+                                <input id="change-@row.Product.Id" type="number" name="quantityChange" value="5" />
+                                <button type="submit" class="btn-quiet">Apply</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

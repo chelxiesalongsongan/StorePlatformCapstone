@@ -1,0 +1,96 @@
+﻿@page "{id:int}"
+@model Storefront.Pages.Orders.DetailsModel
+@using Storefront.Models
+@{
+    var o = Model.Order;
+    ViewData["Title"] = $"Order {o.Id}";
+    var statusClass = o.Status switch { "Confirmed" => "status--confirmed", "Cancelled" => "status--cancelled", _ => "" };
+}
+
+<div class="order-head">
+    <h1 class="page-title">Order @o.Id</h1>
+    <span class="status @statusClass">@OrderDetails.Label(o.Status)</span>
+</div>
+
+@if (o.Status == "Cancelled")
+{
+    <div class="notice notice--warn" role="status">
+        <strong>This order was cancelled.</strong>
+        @(o.FailureReason?.TrimEnd('.') ?? "It couldn't be completed").
+        @(o.FailureReason?.Contains("Payment", StringComparison.OrdinalIgnoreCase) == true
+            ? "The reserved stock was released and any charge refunded."
+            : "No stock was reserved and nothing was charged.")
+    </div>
+}
+else if (o.Status == "Confirmed")
+{
+    <div class="notice notice--ok" role="status">
+        <strong>Order confirmed.</strong>
+        Your items are reserved and the payment went through.
+    </div>
+}
+else
+{
+    <div class="notice" role="status">
+        <strong>Processing your order.</strong>
+        This page updates automatically.
+    </div>
+}
+
+<div class="order-layout">
+    <section class="panel">
+        <h2>Items</h2>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th class="num">Qty</th>
+                        <th class="num">Price</th>
+                        <th class="num">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in o.Items)
+                    {
+                        <tr>
+                            <td>@(Model.ProductNames.TryGetValue(item.ProductId, out var name) ? name : $"Product {item.ProductId}")</td>
+                            <td class="num">@item.Quantity</td>
+                            <td class="num">@item.UnitPrice.ToString("N2")</td>
+                            <td class="num">@((item.Quantity * item.UnitPrice).ToString("N2"))</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="3">Total</th>
+                        <th class="num">@o.TotalAmount.ToString("N2")</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Status history</h2>
+        <ol class="timeline">
+            @foreach (var entry in o.History)
+            {
+                <li>
+                    <span>@OrderDetails.Label(entry.Status)</span>
+                    <time datetime="@entry.At.ToString("o")">@entry.At.ToLocalTime().ToString("HH:mm:ss")</time>
+                </li>
+            }
+        </ol>
+    </section>
+</div>
+
+<p class="mt-4"><a asp-page="/Orders/Index">Back to my orders</a></p>
+
+@section Scripts {
+    @if (!o.IsFinished)
+    {
+        <script>setTimeout(() => location.reload(), 2000);</script>
+    }
+}
+

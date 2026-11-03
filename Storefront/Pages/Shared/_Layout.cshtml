@@ -1,0 +1,73 @@
+﻿@{
+    var currentPage = ViewContext.RouteData.Values["page"] as string;
+    var signedIn = User.Identity?.IsAuthenticated == true;
+    var email = User.Identity?.Name ?? string.Empty;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Deskworks</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="brand" asp-page="/Index"><span class="brand__key" aria-hidden="true">D</span>Deskworks</a>
+
+            <nav class="site-nav" aria-label="Main">
+                <a asp-page="/Index" aria-current="@(currentPage == "/Index" ? "page" : null)">Products</a>
+                @if (signedIn)
+                {
+                    <a asp-page="/Orders/Index" aria-current="@(currentPage?.StartsWith("/Orders") == true ? "page" : null)">My orders</a>
+                }
+                @if (User.IsInRole("Admin"))
+                {
+                    <a asp-page="/Admin/Stock" aria-current="@(currentPage == "/Admin/Stock" ? "page" : null)">Stock</a>
+                }
+            </nav>
+
+            <div class="account">
+                @if (signedIn)
+                {
+                    <span class="user-chip">
+                        <span class="user-chip__initial" aria-hidden="true">@(email.Length > 0 ? char.ToUpperInvariant(email[0]) : '?')</span>
+                        <span class="user-chip__email">@email</span>
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <span class="role-tag">Admin</span>
+                        }
+                    </span>
+                    <form method="post" asp-page="/Account/Logout">
+                        <button type="submit" class="btn-quiet">Log out</button>
+                    </form>
+                }
+                else
+                {
+                    <a class="btn-quiet" asp-page="/Account/Login">Log in</a>
+                    <a class="btn-key" asp-page="/Account/Register">Create account</a>
+                }
+            </div>
+        </div>
+    </header>
+
+    <main class="site-main" role="main">
+        @RenderBody()
+    </main>
+
+    <footer class="site-footer">
+        <div class="site-footer__inner">&copy; 2026 Deskworks. Store Platform capstone project.</div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+
