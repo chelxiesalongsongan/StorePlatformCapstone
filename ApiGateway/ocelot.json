@@ -42,8 +42,7 @@
       "UpstreamHttpMethod": [ "Get" ],
       "DownstreamPathTemplate": "/inventory/v1/{everything}",
       "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [ { "Host": "inventory-service", "Port": 8080 } ],
-      "AuthenticationOptions": { "AuthenticationProviderKeys": [ "Bearer" ], "AllowedScopes": [] }
+      "DownstreamHostAndPorts": [ { "Host": "inventory-service", "Port": 8080 } ]
     },
     {
       "UpstreamPathTemplate": "/inventory/v1/{everything}",
@@ -80,4 +79,5 @@
     }
   }
 }
+
 

@@ -42,8 +42,7 @@
       "UpstreamHttpMethod": [ "Get" ],
       "DownstreamPathTemplate": "/inventory/v1/{everything}",
       "DownstreamScheme": "http",
-      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5007 } ],
-      "AuthenticationOptions": { "AuthenticationProviderKeys": [ "Bearer" ], "AllowedScopes": [] }
+      "DownstreamHostAndPorts": [ { "Host": "localhost", "Port": 5007 } ]
     },
     {
       "UpstreamPathTemplate": "/inventory/v1/{everything}",
@@ -80,3 +79,4 @@
     }
   }
 }
+
