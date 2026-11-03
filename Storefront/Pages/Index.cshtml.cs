@@ -20,7 +20,8 @@ public class IndexModel(GatewayClient gateway, ILogger<IndexModel> log) : PageMo
         try
         {
             // Public route: works without logging in.
-            Products = await gateway.GetAsync<List<Product>>("catalog/v1/products");
+            var products = await gateway.GetAsync<List<Product>>("catalog/v1/products");
+            Products = await WithLiveStockAsync(products);
         }
         catch (Exception ex) when (ex is GatewayException or HttpRequestException)
         {
@@ -39,6 +40,29 @@ public class IndexModel(GatewayClient gateway, ILogger<IndexModel> log) : PageMo
                 log.LogWarning(ex, "Could not read the payment simulation switch");
             }
         }
+    }
+
+    // Inventory is the source of truth for stock; Catalog's stock figure isn't updated by orders.
+    private async Task<List<Product>> WithLiveStockAsync(List<Product> products)
+    {
+        var lookups = products.Select(async product =>
+        {
+            try
+            {
+                var stock = await gateway.GetAsync<StockLevel>($"inventory/v1/products/{product.Id}/stock");
+                return product with { StockQuantity = stock.QuantityAvailable };
+            }
+            catch (GatewayException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                return product with { StockQuantity = 0 }; // no stock record, so it can't be ordered
+            }
+            catch (Exception ex) when (ex is GatewayException or HttpRequestException)
+            {
+                log.LogWarning(ex, "Live stock unavailable for product {ProductId}; showing the catalog figure", product.Id);
+                return product;
+            }
+        });
+        return (await Task.WhenAll(lookups)).ToList();
     }
 
     public async Task<IActionResult> OnPostOrderAsync(int productId, int quantity)
@@ -87,3 +111,4 @@ public class IndexModel(GatewayClient gateway, ILogger<IndexModel> log) : PageMo
         return RedirectToPage();
     }
 }
+
