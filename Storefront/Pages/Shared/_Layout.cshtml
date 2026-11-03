@@ -22,7 +22,14 @@
 
             <nav class="site-nav" aria-label="Main">
                 <a asp-page="/Index" aria-current="@(currentPage == "/Index" ? "page" : null)">Products</a>
-                @* Orders and Admin links are added here by their page owners. *@
+                @if (signedIn)
+                {
+                    <a asp-page="/Orders/Index" aria-current="@(currentPage?.StartsWith("/Orders") == true ? "page" : null)">My orders</a>
+                }
+                @if (User.IsInRole("Admin"))
+                {
+                    <a asp-page="/Admin/Stock" aria-current="@(currentPage == "/Admin/Stock" ? "page" : null)">Stock</a>
+                }
             </nav>
 
             <div class="account">
@@ -63,3 +70,4 @@
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
+
